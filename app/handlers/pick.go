@@ -11,7 +11,7 @@ import (
 
 type businessPick interface {
 	GetDailyWord(ctx context.Context) (models.Pick, error)
-	CheckWordExists(ctx context.Context, word string) (bool, error)
+	CheckWordExists(ctx context.Context, word string) (models.Score, error)
 }
 
 func GetDailyLetters(b businessPick) gin.HandlerFunc {
@@ -44,7 +44,7 @@ func CheckWordExists(b businessPick) gin.HandlerFunc {
 			return
 		}
 
-		exists, err := b.CheckWordExists(c.Request.Context(), rqt.Word)
+		score, err := b.CheckWordExists(c.Request.Context(), rqt.Word)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, err)
 			return
@@ -53,9 +53,11 @@ func CheckWordExists(b businessPick) gin.HandlerFunc {
 		st := struct {
 			Exists bool   `json:"exists"`
 			Word   string `json:"word"`
+			Score  int    `json:"score"`
 		}{
-			Exists: exists,
-			Word:   rqt.Word,
+			Exists: score.Exist,
+			Word:   score.Word,
+			Score:  score.Score,
 		}
 		c.JSON(http.StatusOK, st)
 	}
