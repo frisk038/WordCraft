@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 
 	"github.com/frisk038/wordcraft/business/models"
 	"github.com/google/uuid"
@@ -14,14 +15,11 @@ const (
 	errDupl = `23505`
 
 	checkWordExists = `SELECT word FROM words WHERE word=$1;`
-	pickWord        = `SELECT id,word FROM words WHERE len > 4 ORDER BY RANDOM() LIMIT 1;`
-	insertWord      = `INSERT INTO picks(pick) VALUES($1) RETURNING id;`
+	insertLetters   = `INSERT INTO picks(letters) VALUES($1) RETURNING id;`
 	insertUser      = `INSERT INTO users(name) VALUES($1) RETURNING id;`
 	selectUser      = `SELECT id FROM users WHERE name = $1;`
 	insertScore     = `INSERT INTO scores(userid,picks,score) VALUES($1, $2, $3);`
-	getDailyWord    = `SELECT picks.id ,words.word 
-					   FROM picks LEFT JOIN words on picks.pick=words.id 
-					   WHERE DATE_trunc('day',dt)=DATE_TRUNC('day', NOW())`
+	getDailyWord    = `SELECT id ,letters FROM picks WHERE DATE_trunc('day',dt)=DATE_TRUNC('day', NOW());`
 )
 
 type Client struct {
@@ -84,40 +82,31 @@ func (c *Client) InsertScore(ctx context.Context, user, pick uuid.UUID, score in
 
 func (c *Client) GetDailyWord(ctx context.Context) (models.Pick, error) {
 	rows := c.conn.QueryRow(ctx, getDailyWord)
-	var pick models.Pick
-	if err := rows.Scan(&pick.ID, &pick.Word); err != nil {
+	var (
+		pick    models.Pick
+		letters string
+	)
+	if err := rows.Scan(&pick.ID, &letters); err != nil {
 		if err == pgx.ErrNoRows {
 			return models.Pick{}, models.ErrNoDailyPick
 		}
 		return models.Pick{}, err
 	}
+	l := strings.Split(letters, "")
+	pick.Letters = make([]string, len(l))
+	for i, v := range l {
+		pick.Letters[i] = strings.ToLower(v)
+	}
+
 	return pick, nil
 }
 
-func (c *Client) PickDailyWord(ctx context.Context) (models.Pick, error) {
-	tx, err := c.conn.Begin(ctx)
-	if err != nil {
-		return models.Pick{}, err
-	}
-	defer tx.Rollback(ctx)
-
-	rows := tx.QueryRow(ctx, pickWord)
-	var (
-		id   uuid.UUID
-		pick models.Pick
-	)
-	if err = rows.Scan(&id, &pick.Word); err != nil {
-		return models.Pick{}, err
+func (c *Client) InsertLetters(ctx context.Context, letters []string) (uuid.UUID, error) {
+	rows := c.conn.QueryRow(ctx, insertLetters, strings.Join(letters, ""))
+	var pickID uuid.UUID
+	if err := rows.Scan(&pickID); err != nil {
+		return uuid.UUID{}, err
 	}
 
-	rows = tx.QueryRow(ctx, insertWord, id)
-	if err = rows.Scan(&pick.ID); err != nil {
-		return models.Pick{}, err
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return models.Pick{}, err
-	}
-
-	return pick, nil
+	return pickID, nil
 }
