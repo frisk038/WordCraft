@@ -14,7 +14,7 @@ import (
 const (
 	errDupl = `23505`
 
-	checkWordExists = `SELECT word FROM words WHERE word=$1;`
+	checkWordExists = `SELECT word FROM words WHERE word=UPPER($1);`
 	insertLetters   = `INSERT INTO picks(letters) VALUES($1) RETURNING id;`
 	insertUser      = `INSERT INTO users(name) VALUES($1) RETURNING id;`
 	selectUser      = `SELECT id FROM users WHERE name = $1;`
