@@ -24,7 +24,7 @@ const (
 					   FROM scores 
 					   LEFT JOIN users ON users.id=scores.userid 
 					   WHERE picks =(SELECT id  FROM picks WHERE DATE_trunc('day',dt)=DATE_TRUNC('day', NOW()))
-					   ORDER BY score DESC;`
+					   ORDER BY score DESC LIMIT 5;`
 )
 
 type Client struct {
