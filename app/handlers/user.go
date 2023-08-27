@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/frisk038/wordcraft/business/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -11,6 +12,7 @@ import (
 type businessUser interface {
 	InsertScore(ctx context.Context, user, pick uuid.UUID, score int) error
 	InsertUser(ctx context.Context, username string) (uuid.UUID, error)
+	GetLeaderBoard(ctx context.Context) ([]models.UserScore, error)
 }
 
 func InsertUser(business businessUser) gin.HandlerFunc {
@@ -58,5 +60,29 @@ func InsertScore(business businessUser) gin.HandlerFunc {
 			return
 		}
 		c.Status(http.StatusNoContent)
+	}
+}
+
+type score struct {
+	Name  string `json:"name"`
+	Score int    `json:"score"`
+}
+
+func GetLeaderScore(business businessUser) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		scores, err := business.GetLeaderBoard(c.Request.Context())
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		var scs []score
+		for _, v := range scores {
+			scs = append(scs, score{
+				Name:  v.User,
+				Score: v.Score,
+			})
+		}
+		c.JSON(http.StatusOK, scs)
 	}
 }

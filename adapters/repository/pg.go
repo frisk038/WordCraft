@@ -20,6 +20,11 @@ const (
 	selectUser      = `SELECT id FROM users WHERE name = $1;`
 	insertScore     = `INSERT INTO scores(userid,picks,score) VALUES($1, $2, $3);`
 	getDailyWord    = `SELECT id ,letters FROM picks WHERE DATE_trunc('day',dt)=DATE_TRUNC('day', NOW());`
+	getLeaderBoard  = `SELECT users.name, scores.score 
+					   FROM scores 
+					   LEFT JOIN users ON users.id=scores.userid 
+					   WHERE picks =(SELECT id  FROM picks WHERE DATE_trunc('day',dt)=DATE_TRUNC('day', NOW()))
+					   ORDER BY score DESC;`
 )
 
 type Client struct {
@@ -109,4 +114,24 @@ func (c *Client) InsertLetters(ctx context.Context, letters []string) (uuid.UUID
 	}
 
 	return pickID, nil
+}
+
+func (c *Client) GetLeaderBoard(ctx context.Context) ([]models.UserScore, error) {
+	rows, err := c.conn.Query(ctx, getLeaderBoard)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var userScores []models.UserScore
+	for rows.Next() {
+		var us models.UserScore
+		err := rows.Scan(&us.User, &us.Score)
+		if err != nil {
+			return nil, err
+		}
+		userScores = append(userScores, us)
+	}
+
+	return userScores, rows.Err()
 }

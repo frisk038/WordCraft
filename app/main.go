@@ -35,6 +35,7 @@ func main() {
 	rUser := router.Group("/user")
 	rUser.POST("/register", handlers.InsertUser(&bUser))
 	rUser.POST("/score", handlers.InsertScore(&bUser))
+	rUser.GET("/leaderboard", handlers.GetLeaderScore(&bUser))
 
 	router.Run(":" + port)
 }
