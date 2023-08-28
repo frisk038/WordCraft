@@ -83,6 +83,9 @@ func GetLeaderScore(business businessUser) gin.HandlerFunc {
 				Score: v.Score,
 			})
 		}
+		if len(scores) == 0 {
+			scs = []score{}
+		}
 		c.JSON(http.StatusOK, scs)
 	}
 }
